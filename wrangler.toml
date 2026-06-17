@@ -1,0 +1,19 @@
+name = "lifetracker"
+main = "api/index.js"
+compatibility_date = "2024-09-23"
+workers_dev = true
+
+[assets]
+directory = "./dist"
+not_found_handling = "single-page-application"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "lifetracker"
+database_id = "ee496c4d-98df-4111-8520-127dc0508763"
+
+[triggers]
+crons = ["*/15 * * * *"]
+
+[vars]
+# VAPID_SUBJECT se lee de .dev.vars en local y de Worker Secrets en producción

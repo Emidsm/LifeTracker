@@ -1,0 +1,30 @@
+{
+  "name": "lifetracker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "worker:dev": "wrangler dev --port 8788 --local --ip 0.0.0.0",
+    "phone": "npm run build && npm run worker:dev",
+    "local": "concurrently -n worker,vite -c cyan,magenta \"npm run worker:dev\" \"npm run dev\"",
+    "deploy": "npm run build && wrangler deploy",
+    "db:create": "wrangler d1 create lifetracker",
+    "db:init:local": "wrangler d1 migrations apply lifetracker --local",
+    "db:seed:local": "wrangler d1 execute lifetracker --file ./migrations/0002_seed.sql --local",
+    "db:migrate": "wrangler d1 migrations apply lifetracker --local && wrangler d1 migrations apply lifetracker",
+    "db:seed": "wrangler d1 execute lifetracker --file ./migrations/0002_seed.sql",
+    "generate-vapid": "node scripts/generate-vapid.js"
+  },
+  "dependencies": {
+    "lucide-preact": "^1.20.0",
+    "preact": "^10.22.0"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.8.1",
+    "concurrently": "^9.2.1",
+    "vite": "^5.2.0",
+    "wrangler": "^3.57.0"
+  }
+}
