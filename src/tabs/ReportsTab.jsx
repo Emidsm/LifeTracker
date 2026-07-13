@@ -353,7 +353,7 @@ export function ReportsTab() {
   const totalMins  = Object.values(totals).reduce((s, m) => s + m, 0);
   const totalH     = Math.floor(totalMins / 60);
   const totalM     = Math.round(totalMins % 60);
-  const activeDays = new Set(activities.map(a => a.created_at.slice(0, 10))).size;
+  const activeDays = new Set(activities.map(a => isoDate(new Date(a.created_at)))).size;
 
   const nextDisabled = to >= todayLocalISO();
 

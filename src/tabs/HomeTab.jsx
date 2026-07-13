@@ -3,9 +3,15 @@ import { PlusCircle, Bell, BellOff, CirclePause } from 'lucide-preact';
 import { api } from '../api.js';
 import { CAT_BY_ID, STATUS_COLORS } from '../constants.js';
 
+// Fechas de solo día ("YYYY-MM-DD") se parsean a mediodía local para evitar
+// el corrimiento de un día por la interpretación UTC.
+function parseDate(d) {
+  return new Date(String(d).length <= 10 ? d + 'T12:00:00' : d);
+}
+
 function deadlineColor(dl) {
   if (!dl) return '#94a3b8';
-  const days = (new Date(dl) - Date.now()) / 86400000;
+  const days = (parseDate(dl) - Date.now()) / 86400000;
   if (days < 7)  return '#ef4444';
   if (days < 30) return '#f59e0b';
   return '#10b981';
@@ -13,7 +19,7 @@ function deadlineColor(dl) {
 
 function fmtDate(d) {
   if (!d) return 'Sin fecha';
-  return new Date(d).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+  return parseDate(d).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
 }
 
 function fmtTime(iso) {

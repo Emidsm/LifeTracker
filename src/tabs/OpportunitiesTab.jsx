@@ -4,9 +4,15 @@ import { api } from '../api.js';
 import { OPP_CATEGORIES, OPP_STATUSES, STATUS_COLORS, OPP_CAT_COLORS } from '../constants.js';
 import { MobilityChecklist } from '../components/MobilityChecklist.jsx';
 
+// Fechas de solo día ("YYYY-MM-DD") se parsean a mediodía local para evitar
+// el corrimiento de un día por la interpretación UTC.
+function parseDate(d) {
+  return new Date(String(d).length <= 10 ? d + 'T12:00:00' : d);
+}
+
 function deadlineColor(dl) {
   if (!dl) return '#94a3b8';
-  const days = (new Date(dl) - Date.now()) / 86400000;
+  const days = (parseDate(dl) - Date.now()) / 86400000;
   if (days < 7)  return '#ef4444';
   if (days < 30) return '#f59e0b';
   return '#10b981';
@@ -14,7 +20,7 @@ function deadlineColor(dl) {
 
 function fmtDate(d) {
   if (!d) return 'Sin fecha';
-  return new Date(d).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' });
+  return parseDate(d).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function OppCard({ opp, onSaved, onDeleted }) {
