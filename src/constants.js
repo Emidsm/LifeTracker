@@ -1,5 +1,6 @@
 export const CATEGORIES = [
   { id: 'trabajo_video',   label: 'Trabajo pagado',    sub: 'edición video',  emoji: '💼', color: '#6366f1' },
+  { id: 'trabajo_dev',     label: 'Trabajo / freelance', sub: 'dev, chambas', emoji: '🧑‍💻', color: '#0891b2' },
   { id: 'icpc',            label: 'ICPC/algoritmos',   sub: '',               emoji: '🧮', color: '#8b5cf6' },
   { id: 'saas',            label: 'SaaS',              sub: '',               emoji: '🚀', color: '#0ea5e9' },
   { id: 'portafolio',      label: 'Portafolio',        sub: '',               emoji: '📁', color: '#06b6d4' },

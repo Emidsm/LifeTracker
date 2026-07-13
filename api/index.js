@@ -2,7 +2,7 @@ import { handleAuth } from './routes/auth.js';
 import { handleActivities } from './routes/activities.js';
 import { handleOpportunities } from './routes/opportunities.js';
 import { handleSettings } from './routes/settings.js';
-import { handlePush, sendScheduledNotification, notifyAll } from './routes/push.js';
+import { handlePush, sendScheduledNotification, sendDeadlineReminder, notifyAll } from './routes/push.js';
 import { handleMonitors, checkMonitors } from './routes/monitors.js';
 
 function addCors(res) {
@@ -67,6 +67,7 @@ export default {
     ctx.waitUntil(
       Promise.allSettled([
         sendScheduledNotification(env),
+        sendDeadlineReminder(env),
         checkMonitors(env, (msg) => notifyAll(env, msg)),
       ])
     );

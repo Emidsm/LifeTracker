@@ -2,13 +2,14 @@ import { useState } from 'preact/hooks';
 import {
   Briefcase, Code2, Rocket, FolderOpen, Video, Activity, BookOpen,
   Globe, Trash2, Coffee, Heart, Users, Leaf, Smartphone, Film, Moon, Pencil,
-  Clock, CirclePause,
+  Clock, CirclePause, Laptop,
 } from 'lucide-preact';
 import { CATEGORIES } from '../constants.js';
 import { api } from '../api.js';
 
 const CAT_ICONS = {
   trabajo_video:   Briefcase,
+  trabajo_dev:     Laptop,
   icpc:            Code2,
   saas:            Rocket,
   portafolio:      FolderOpen,

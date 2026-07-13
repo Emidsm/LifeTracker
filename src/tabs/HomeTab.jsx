@@ -105,20 +105,19 @@ export function HomeTab({ onTabChange }) {
   const [pausing, setPausing] = useState(false);
 
   useEffect(() => {
-    api.opportunities.list().then(data => {
-      setOpps(data.filter(o => o.deadline || o.status !== 'Descartado').slice(0, 3));
-    }).catch(console.error);
-
+    api.opportunities.list().then(setOpps).catch(console.error);
     api.activities.list({ date: todayLocalISO() }).then(setActs).catch(console.error);
   }, []);
 
-  const upcoming = [...opps]
-    .sort((a, b) => {
-      if (!a.deadline && !b.deadline) return 0;
-      if (!a.deadline) return 1;
-      if (!b.deadline) return -1;
-      return new Date(a.deadline) - new Date(b.deadline);
-    })
+  // "Próximas fechas límite": solo oportunidades vivas con deadline futura.
+  // Excluye estados terminales (rechazado/descartado/aceptado) y fechas ya pasadas,
+  // luego ordena por deadline y recorta a 3.
+  const TERMINAL_STATUSES = ['Rechazado', 'Descartado', 'Aceptado'];
+  const todayISO = todayLocalISO();
+  const upcoming = opps
+    .filter(o => o.deadline && !TERMINAL_STATUSES.includes(o.status))
+    .filter(o => o.deadline.slice(0, 10) >= todayISO)
+    .sort((a, b) => new Date(a.deadline) - new Date(b.deadline))
     .slice(0, 3);
 
   const todayActs = activities.slice(-8).reverse();

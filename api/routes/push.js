@@ -6,14 +6,37 @@ function json(data, status = 200) {
   });
 }
 
-const MESSAGES = [
-  '¿Qué estás haciendo ahora?',
-  '¿En qué andas?',
-  'Registra tu actividad actual',
-  '¿Cómo vas? — LifeTracker',
-  '¿Qué estás haciendo en este momento?',
-  'Hora de anotar — ¿qué va?',
-];
+// Mensajes por contexto. Tono de apoyo, nunca de reproche: la culpa hace
+// abandonar la app, no registrar más.
+const MSG = {
+  morning: [
+    '¿Qué quieres que cuente hoy? Elige una cosa.',
+    'Buenos días ☀️ ¿Con qué arrancamos?',
+    '¿Cuál es tu 1 cosa importante de hoy?',
+  ],
+  midday: [
+    '¿Retomamos algo? Aunque sean 20 min.',
+    '¿En qué andas ahora?',
+    'Momento de anotar — ¿qué va?',
+  ],
+  evening: [
+    '¿Cerramos el día? ¿Cómo te fue?',
+    '¿Nos vamos a dormir pronto? Anota lo último 🌙',
+    'Casi hora de descansar. ¿Qué tal el día?',
+  ],
+  gap: [
+    '¿Todo bien por ahí? Sin presión, solo paso a saludar.',
+    'Aquí sigo cuando quieras retomar. Sin prisa.',
+    '¿Cómo vas? Cuando puedas, me cuentas.',
+  ],
+  neutral: [
+    '¿Qué estás haciendo ahora?',
+    '¿En qué andas?',
+    '¿Cómo va todo?',
+  ],
+};
+
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
 export async function handlePush(request, env, path) {
   const action = path.split('/')[1];
@@ -95,13 +118,66 @@ export async function sendScheduledNotification(env) {
     if (mins < s.freq_minutes) return;
   }
 
-  let message = MESSAGES[Math.floor(Math.random() * MESSAGES.length)];
+  // Elige el mensaje según el momento del día (usa la ventana despierta).
+  const startHour = parseInt(s.awake_start.slice(0, 2), 10) || 8;
+  const endHour   = parseInt(s.awake_end.slice(0, 2), 10) || 23;
+  let bucket = 'neutral';
+  if (localHour < startHour + 2)      bucket = 'morning';
+  else if (localHour >= endHour - 2)  bucket = 'evening';
+  else                                bucket = 'midday';
 
+  let message = pick(MSG[bucket]);
+
+  // Si lleva mucho sin registrar, tono de apoyo — no de reproche.
   if (s.last_activity_at) {
     const hrs = (now - new Date(s.last_activity_at)) / 3600000;
-    if (hrs >= 3) message = `Llevas ${Math.floor(hrs)}h sin registrar — ¿qué ha pasado?`;
+    if (hrs >= 4) message = pick(MSG.gap);
   }
 
   await notifyAll(env, message);
   await env.DB.prepare('UPDATE settings SET last_notified_at = ? WHERE id = 1').bind(nowISO).run();
+}
+
+// Recordatorio de deadlines de oportunidades: a lo más 1 al día, en horario
+// diurno, para la oportunidad viva con la fecha más cercana (dentro de 7 días).
+export async function sendDeadlineReminder(env) {
+  const s = await env.DB.prepare(
+    'SELECT pause_until, last_deadline_notified_at FROM settings WHERE id = 1'
+  ).first();
+  if (!s) return;
+
+  const now = new Date();
+  const nowISO = now.toISOString();
+  if (s.pause_until && nowISO < s.pause_until) return;
+
+  const localHour = (now.getUTCHours() - 6 + 24) % 24;
+  if (localHour < 9 || localHour >= 22) return; // solo en horario diurno
+
+  const todayLocal = new Date(now.getTime() - 6 * 3600000).toISOString().slice(0, 10);
+  if (s.last_deadline_notified_at && s.last_deadline_notified_at.slice(0, 10) === todayLocal) return;
+
+  const TERMINAL = ['Rechazado', 'Descartado', 'Aceptado'];
+  const { results } = await env.DB.prepare(
+    'SELECT name, deadline, status FROM opportunities WHERE deadline IS NOT NULL'
+  ).all();
+
+  const anchor = new Date(todayLocal + 'T12:00:00');
+  const upcoming = (results || [])
+    .filter(o => !TERMINAL.includes(o.status))
+    .map(o => ({
+      name: o.name,
+      days: Math.round((new Date(o.deadline.slice(0, 10) + 'T12:00:00') - anchor) / 86400000),
+    }))
+    .filter(o => o.days >= 0 && o.days <= 7)
+    .sort((a, b) => a.days - b.days);
+
+  if (!upcoming.length) return;
+
+  const o = upcoming[0];
+  const when = o.days === 0 ? 'cierra hoy'
+    : o.days === 1 ? 'cierra mañana'
+    : `cierra en ${o.days} días`;
+
+  await notifyAll(env, `📌 ${o.name} ${when}`);
+  await env.DB.prepare('UPDATE settings SET last_deadline_notified_at = ? WHERE id = 1').bind(nowISO).run();
 }
