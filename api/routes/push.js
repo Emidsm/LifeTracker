@@ -138,9 +138,10 @@ export async function sendScheduledNotification(env) {
   await env.DB.prepare('UPDATE settings SET last_notified_at = ? WHERE id = 1').bind(nowISO).run();
 }
 
-// Recordatorio de deadlines de oportunidades: a lo más 1 al día, en horario
-// diurno, para la oportunidad viva con la fecha más cercana (dentro de 7 días).
-export async function sendDeadlineReminder(env) {
+// Aviso diario de oportunidades: a lo más 1 al día, en horario diurno.
+// Elige UN mensaje por prioridad (menos es más): deadline urgente primero,
+// luego recordatorio de proceso de entrevistas activo.
+export async function sendOpportunityNudge(env) {
   const s = await env.DB.prepare(
     'SELECT pause_until, last_deadline_notified_at FROM settings WHERE id = 1'
   ).first();
@@ -158,12 +159,16 @@ export async function sendDeadlineReminder(env) {
 
   const TERMINAL = ['Rechazado', 'Descartado', 'Aceptado'];
   const { results } = await env.DB.prepare(
-    'SELECT name, deadline, status FROM opportunities WHERE deadline IS NOT NULL'
+    'SELECT name, deadline, status FROM opportunities'
   ).all();
-
+  const opps = results || [];
   const anchor = new Date(todayLocal + 'T12:00:00');
-  const upcoming = (results || [])
-    .filter(o => !TERMINAL.includes(o.status))
+
+  let message = null;
+
+  // Prioridad 1: deadline viva más cercana dentro de 7 días.
+  const upcoming = opps
+    .filter(o => o.deadline && !TERMINAL.includes(o.status))
     .map(o => ({
       name: o.name,
       days: Math.round((new Date(o.deadline.slice(0, 10) + 'T12:00:00') - anchor) / 86400000),
@@ -171,13 +176,26 @@ export async function sendDeadlineReminder(env) {
     .filter(o => o.days >= 0 && o.days <= 7)
     .sort((a, b) => a.days - b.days);
 
-  if (!upcoming.length) return;
+  if (upcoming.length) {
+    const o = upcoming[0];
+    const when = o.days === 0 ? 'cierra hoy'
+      : o.days === 1 ? 'cierra mañana'
+      : `cierra en ${o.days} días`;
+    message = `📌 ${o.name} ${when}`;
+  }
 
-  const o = upcoming[0];
-  const when = o.days === 0 ? 'cierra hoy'
-    : o.days === 1 ? 'cierra mañana'
-    : `cierra en ${o.days} días`;
+  // Prioridad 2: proceso de entrevistas activo — recordatorio de prep, sin presión.
+  if (!message) {
+    const inInterview = opps.filter(o => o.status === 'En proceso de entrevistas');
+    if (inInterview.length) {
+      const o = inInterview[0];
+      const extra = inInterview.length > 1 ? ` (y ${inInterview.length - 1} más)` : '';
+      message = `🎯 Sigues en proceso con ${o.name}${extra}. ¿Repasamos algo hoy? Sin presión.`;
+    }
+  }
 
-  await notifyAll(env, `📌 ${o.name} ${when}`);
+  if (!message) return;
+
+  await notifyAll(env, message);
   await env.DB.prepare('UPDATE settings SET last_deadline_notified_at = ? WHERE id = 1').bind(nowISO).run();
 }
