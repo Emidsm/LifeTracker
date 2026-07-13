@@ -190,6 +190,7 @@ function ActivityRow({ act, onUpdated, onDeleted }) {
   });
   const [saving, setSaving]   = useState(false);
   const [deleting, setDel]    = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false);
 
   const cat = CAT_BY_ID[act.category];
   const label = actLabel(act);
@@ -209,7 +210,6 @@ function ActivityRow({ act, onUpdated, onDeleted }) {
   };
 
   const del = async () => {
-    if (!confirm(`¿Eliminar "${label}"?`)) return;
     setDel(true);
     try {
       await api.activities.delete(act.id);
@@ -264,9 +264,20 @@ function ActivityRow({ act, onUpdated, onDeleted }) {
       <button class="act-icon-btn" onClick={() => setEditing(true)} title="Editar">
         <Pencil size={13} />
       </button>
-      <button class="act-icon-btn act-icon-btn--del" onClick={del} disabled={deleting} title="Eliminar">
-        <Trash2 size={13} />
-      </button>
+      {confirmDel ? (
+        <>
+          <button class="act-icon-btn act-icon-btn--del" onClick={del} disabled={deleting} title="Confirmar">
+            <Check size={13} />
+          </button>
+          <button class="act-icon-btn" onClick={() => setConfirmDel(false)} title="Cancelar">
+            <X size={13} />
+          </button>
+        </>
+      ) : (
+        <button class="act-icon-btn act-icon-btn--del" onClick={() => setConfirmDel(true)} disabled={deleting} title="Eliminar">
+          <Trash2 size={13} />
+        </button>
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'preact/hooks';
 import { PlusCircle, Bell, BellOff, CirclePause } from 'lucide-preact';
 import { api } from '../api.js';
-import { CAT_BY_ID } from '../constants.js';
+import { CAT_BY_ID, STATUS_COLORS } from '../constants.js';
 
 function deadlineColor(dl) {
   if (!dl) return '#94a3b8';
@@ -120,6 +120,10 @@ export function HomeTab({ onTabChange }) {
     .sort((a, b) => new Date(a.deadline) - new Date(b.deadline))
     .slice(0, 3);
 
+  // Procesos activos (ya no aparecen en "Próximas fechas" si su deadline pasó).
+  const ACTIVE_STAGES = ['Documentos en proceso', 'Aplicado', 'En proceso de entrevistas'];
+  const inProgress = opps.filter(o => ACTIVE_STAGES.includes(o.status)).slice(0, 4);
+
   const todayActs = activities.slice(-8).reverse();
 
   // Current running activity = last entry that is NOT pausa
@@ -193,6 +197,27 @@ export function HomeTab({ onTabChange }) {
           </div>
         ))}
       </div>
+
+      {inProgress.length > 0 && (
+        <>
+          <p class="home-section-title">En proceso</p>
+          <div class="home-deadlines">
+            {inProgress.map(opp => (
+              <div
+                key={opp.id}
+                class="home-deadline-card"
+                style={{ '--dl-color': STATUS_COLORS[opp.status] || '#8b5cf6' }}
+                onClick={() => onTabChange('oportunidades')}
+              >
+                <span class="home-dl-name">{opp.name}</span>
+                <span class="home-dl-info">
+                  {opp.status}{opp.deadline ? ` · ${fmtDate(opp.deadline)}` : ''}
+                </span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       <p class="home-section-title">Actividad de hoy</p>
       <div class="home-today">

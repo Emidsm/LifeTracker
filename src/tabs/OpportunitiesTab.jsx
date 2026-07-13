@@ -23,6 +23,7 @@ function OppCard({ opp, onSaved, onDeleted }) {
   const [form, setForm]           = useState({ ...opp });
   const [checklist, setChecklist] = useState(opp.checklist || []);
   const [saving, setSaving]       = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false);
 
   const isMobility = opp.category === 'Movilidad académica';
   const dlColor    = deadlineColor(opp.deadline);
@@ -41,7 +42,6 @@ function OppCard({ opp, onSaved, onDeleted }) {
   };
 
   const del = async () => {
-    if (!confirm(`¿Eliminar "${opp.name}"?`)) return;
     await api.opportunities.delete(opp.id);
     onDeleted(opp.id);
   };
@@ -143,8 +143,17 @@ function OppCard({ opp, onSaved, onDeleted }) {
               <div style={{ flex: 1 }} />
               <button class="btn btn--ghost" style={{ padding: '6px 12px', fontSize: 13 }}
                 onClick={() => setEditing(true)}>Editar</button>
-              <button class="btn" style={{ padding: '6px 12px', fontSize: 13, background: '#fee2e2', color: '#ef4444', border: 'none' }}
-                onClick={del}>Eliminar</button>
+              {confirmDel ? (
+                <>
+                  <button class="btn btn--ghost" style={{ padding: '6px 10px', fontSize: 13 }}
+                    onClick={() => setConfirmDel(false)}>Cancelar</button>
+                  <button class="btn" style={{ padding: '6px 12px', fontSize: 13, background: '#ef4444', color: '#fff', border: 'none' }}
+                    onClick={del}>¿Eliminar?</button>
+                </>
+              ) : (
+                <button class="btn" style={{ padding: '6px 12px', fontSize: 13, background: '#fee2e2', color: '#ef4444', border: 'none' }}
+                  onClick={() => setConfirmDel(true)}>Eliminar</button>
+              )}
             </div>
           )}
         </>
@@ -224,6 +233,7 @@ function MonitorPanel() {
   const [addUrl, setAddUrl]     = useState('');
   const [addLabel, setAddLabel] = useState('');
   const [adding, setAdding]     = useState(false);
+  const [result, setResult]     = useState(null); // { id, text, ok }
 
   const load = () =>
     api.monitors.list().then(setMonitors).catch(console.error);
@@ -234,11 +244,13 @@ function MonitorPanel() {
     setChecking(id);
     try {
       const r = await api.monitors.check(id);
-      if (r.changed) alert('El contenido cambió — revisa la página');
-      else alert('Sin cambios detectados');
+      setResult({ id, text: r.changed ? 'Cambió — revisa la página' : 'Sin cambios', ok: !r.changed });
       load();
-    } catch (e) { alert('Error: ' + e.message); }
+    } catch (e) {
+      setResult({ id, text: 'Error: ' + e.message, ok: false });
+    }
     setChecking(null);
+    setTimeout(() => setResult(null), 4000);
   };
 
   const del = async (id) => {
@@ -329,6 +341,11 @@ function MonitorPanel() {
                   <span>Revisado {fmtAgo(m.last_checked_at)}</span>
                   {m.last_changed_at && <span> · Cambió {fmtAgo(m.last_changed_at)}</span>}
                 </div>
+                {result?.id === m.id && (
+                  <div style={{ fontSize: 11, paddingLeft: 17, fontWeight: 600, color: result.ok ? '#10b981' : '#ef4444' }}>
+                    {result.text}
+                  </div>
+                )}
                 <a href={m.url} target="_blank" rel="noreferrer"
                   style={{ fontSize: 11, color: 'var(--accent)', paddingLeft: 17,
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
